@@ -68,16 +68,46 @@ app.delete("/livros/:id", async (req, res) => {
 app.put("/livros/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const { body } = req;
-    const [results] = await pool.query(
-      "UPDATE livro SET `titulo` = ?, `autor` = ?, `ano_publicacao` = ?,  `isbn` = ?,  `disponivel` = ? WHERE id = ?; ",
-      [body.titulo, body.autor, body.ano_publicacao, body.isbn, body.disponivel, id]
+    const [livroAtual] = await pool.query(
+      "SELECT * FROM livro WHERE id = ?",
+      [id]
     );
-    res.status(200).send("Livro atualizado com sucesso!", results);
+    if (livroAtual.length === 0) {
+      return res.status(404).json({ error: "Livro não encontrado" });
+    }
+
+    const atual = livroAtual[0];
+    const novo = req.body;
+
+    const [results] = await pool.query(
+      "UPDATE livro SET titulo = ?, autor = ?, ano_publicacao = ?, isbn = ?, disponivel = ? WHERE id = ?",
+      [
+        novo.titulo ?? atual.titulo,
+        novo.autor ?? atual.autor,
+        novo.ano_publicacao ?? atual.ano_publicacao,
+        novo.isbn ?? atual.isbn,
+        novo.disponivel ?? atual.disponivel,
+        id
+      ]
+    );
+
+    const [livroFinal] = await pool.query(
+      "SELECT * FROM livro WHERE id = ?",
+      [id]
+    );
+    
+    return res.status(200).json({
+      message: "Livro atualizado com sucesso!",
+      livro: livroFinal[0]
+    });
+
   } catch (error) {
     console.log(error);
+    res.status(500).json({ error: "Erro ao atualizar o livro" });
   }
 });
+
+
 
 
 app.listen(3000, () => {
